@@ -36,7 +36,7 @@ RUN if ls /tmp/resources/*jdk-*-linux-x64.tar.gz > /dev/null 2>&1; then \
 # Install Oracle JDK (and uninstall OpenJDK JRE) if the build-arg ORACLE_JDK = true or an Oracle tar.gz
 # was found in /tmp/resources
 ARG ORACLE_JDK=false
-RUN if ls /var/cache/oracle-jdk8-installer/*jdk-*-linux-x64.tar.gz > /dev/null 2>&1 || [ "$ORACLE_JDK" = true ]; then \
+RUN if [ "$ORACLE_JDK" = true ]; then \
        apt-get autoremove --purge -y openjdk-8-jre-headless && \
        echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true \
          | debconf-set-selections && \
@@ -45,6 +45,18 @@ RUN if ls /var/cache/oracle-jdk8-installer/*jdk-*-linux-x64.tar.gz > /dev/null 2
        apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 && \
        rm -rf /var/lib/apt/lists/* && \
        apt-get update && \
+       apt-get install -y oracle-java8-installer || : ;\
+    fi;
+
+# NOTE: https://askubuntu.com/questions/966107/cant-install-oracle-java-8-in-ubuntu-16-04/996986#996986
+RUN if [ "$ORACLE_JDK" = true ]; then \
+       sed -i 's|JAVA_VERSION=8u151|JAVA_VERSION=8u161|' /var/lib/dpkg/info/oracle-java8-installer.* && \
+       sed -i 's|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u161-b12/2f38c3b165be4555a1fa6e98c45e0808/|' /var/lib/dpkg/info/oracle-java8-installer.* && \
+       sed -i 's|SHA256SUM_TGZ="c78200ce409367b296ec39be4427f020e2c585470c4eed01021feada576f027f"|SHA256SUM_TGZ="6dbc56a0e3310b69e91bb64db63a485bd7b6a8083f08e48047276380a0e2021e"|' /var/lib/dpkg/info/oracle-java8-installer.* && \
+       sed -i 's|J_DIR=jdk1.8.0_151|J_DIR=jdk1.8.0_161|' /var/lib/dpkg/info/oracle-java8-installer.*; \
+    fi;
+
+RUN if [ "$ORACLE_JDK" = true ]; then \
        apt-get install -y oracle-java8-installer oracle-java8-set-default && \
        ln -s --force /usr/lib/jvm/java-8-oracle /usr/lib/jvm/default-java && \
        rm -rf /var/lib/apt/lists/* && \
